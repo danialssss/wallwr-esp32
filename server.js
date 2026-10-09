@@ -1,10 +1,12 @@
 // Tiny backend for the Telegram wallet. No extra packages needed.
+// Tiny backend for the Telegram wallet. No extra packages needed.
 const http = require("http");
 const crypto = require("crypto");
 const fs = require("fs");
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const PORT = process.env.PORT || 3000;
+const DEVICE_KEY = process.env.DEVICE_KEY;
 const FILE = "data.json";
 
 if (!BOT_TOKEN) { console.error("Missing BOT_TOKEN environment variable"); process.exit(1); }
@@ -49,6 +51,19 @@ const server = http.createServer((req, res) => {
   let raw = "";
   req.on("data", c => { raw += c; if (raw.length > 10000) req.destroy(); });
   req.on("end", () => {
+        if (req.url === "/api/esp/topup") {
+      if (!DEVICE_KEY || req.headers["x-api-key"] !== DEVICE_KEY) return send(401, { error: "bad key" });
+      let b = {};
+      try { b = JSON.parse(raw); } catch (e) {}
+      const amount = money(b.amount);
+      const entry = db.users[String(b.user)];
+      if (!entry) return send(404, { error: "user has not opened the app yet" });
+      if (!(amount > 0) || amount > 1000) return send(400, { error: "bad amount" });
+      entry.balance = money(entry.balance + amount);
+      entry.history.push({ label: "Added by device", amount, date: Date.now() });
+      save();
+      return send(200, { balance: entry.balance });
+    }
     const user = verify(req.headers["x-init-data"]);
     if (!user) return send(401, { error: "Open this app from Telegram." });
     const me = getUser(user);
@@ -84,5 +99,7 @@ const server = http.createServer((req, res) => {
     send(404, { error: "Not found" });
   });
 });
+
+server.listen(PORT, () => console.log("Wallet backend running on port " + PORT));
 
 server.listen(PORT, () => console.log("Wallet backend running on port " + PORT));
