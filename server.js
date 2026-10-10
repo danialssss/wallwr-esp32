@@ -1,5 +1,4 @@
 // Tiny backend for the Telegram wallet. No extra packages needed.
-// Tiny backend for the Telegram wallet. No extra packages needed.
 const http = require("http");
 const crypto = require("crypto");
 const fs = require("fs");
@@ -99,7 +98,5 @@ const server = http.createServer((req, res) => {
     send(404, { error: "Not found" });
   });
 });
-
-server.listen(PORT, () => console.log("Wallet backend running on port " + PORT));
 
 server.listen(PORT, () => console.log("Wallet backend running on port " + PORT));
